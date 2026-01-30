@@ -3,9 +3,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import os
-from pathlib import Path
 from .dataset import Cifar10DataManager
 from .model import build_model
+from .utils import PROJECT_NAME, ENTITY
 
 def train_epoch(model, loader, criterion, optimizer, device):
     model.train()
@@ -37,14 +37,17 @@ def validate(model, loader, criterion, device):
     return running_loss / len(loader), 100 * correct / total
 
 def run_training_sweep(config=None, data_dir="./data"):
-    # This function is called by wandb.agent
-    with wandb.init(config=config):
+    """
+    Training function called by wandb.agent.
+    Matches Notebook 02 logic exactly.
+    """
+    with wandb.init(config=config, entity=ENTITY, project=PROJECT_NAME):
         cfg = wandb.config
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
         # Data
         dm = Cifar10DataManager(data_dir=data_dir)
-        train_loader, test_loader = dm.get_loaders(cfg.batch_size, architecture_option=cfg.architecture_option)
+        train_loader, test_loader = dm.get_loaders(cfg.batch_size, cfg.architecture_option)
         
         # Model
         model = build_model(cfg.architecture_option).to(device)

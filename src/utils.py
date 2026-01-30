@@ -1,10 +1,16 @@
 from dotenv import load_dotenv
 import os
 
-def load_env_vars():
-    load_dotenv()
+load_dotenv()
+
+WANDB_API_KEY = os.getenv("WANDB_API_KEY")
+PROJECT_NAME = os.getenv("PROJECT_NAME", "cifar10_mlops_project")
+ENTITY = os.getenv("ENTITY", "esi-sba-dz")
+
+def get_config():
+    """Returns project configuration from .env file."""
     return {
-        "WANDB_API_KEY": os.getenv("WANDB_API_KEY"),
-        "WANDB_ENTITY": os.getenv("WANDB_ENTITY"),
-        "WANDB_PROJECT": os.getenv("WANDB_PROJECT"),
+        "WANDB_API_KEY": WANDB_API_KEY,
+        "PROJECT_NAME": PROJECT_NAME,
+        "ENTITY": ENTITY,
     }

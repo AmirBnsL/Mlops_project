@@ -66,20 +66,27 @@ class Cifar10DataManager:
             artifact.add_dir(self.data_dir) # Simplified: logging whole data dir
         run.log_artifact(artifact)
         
-    def get_loaders(self, batch_size, architecture_option='standard', version="v1"):
+    def get_loaders(self, batch_size, architecture_option='standard'):
+        """
+        Returns train and test loaders.
+        STRICT: download=False - assumes data is present via W&B Artifact.
+        """
         train_transform, test_transform = self.get_transforms(architecture_option)
         
-        train_set = torchvision.datasets.CIFAR10(root=self.data_dir, train=True, download=True, transform=train_transform)
-        test_set = torchvision.datasets.CIFAR10(root=self.data_dir, train=False, download=True, transform=test_transform)
+        try:
+            train_set = torchvision.datasets.CIFAR10(root=self.data_dir, train=True, download=False, transform=train_transform)
+            test_set = torchvision.datasets.CIFAR10(root=self.data_dir, train=False, download=False, transform=test_transform)
+        except RuntimeError:
+            print("CRITICAL: Data not found locally. Ensure Artifact is downloaded first.")
+            raise
         
         # Load indices
-        test_indices = np.load(os.path.join(self.data_dir, "processed", "test_indices.npy"))
-        
-        # Create Subsets
+        indices_path = os.path.join(self.data_dir, "processed", "test_indices.npy")
+        if not os.path.exists(indices_path):
+             raise FileNotFoundError(f"Indices file missing: {indices_path}")
+             
+        test_indices = np.load(indices_path)
         real_test_set = Subset(test_set, test_indices)
-        
-        # If version is v2, we might append new data to train_set here
-        # (Implementation of connecting feedback loop data would go here)
         
         train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=2)
         test_loader = DataLoader(real_test_set, batch_size=batch_size, shuffle=False, num_workers=2)
@@ -87,7 +94,15 @@ class Cifar10DataManager:
         return train_loader, test_loader
 
     def get_simulation_data(self):
-        """Returns the raw Simulation subset (PIL images) for inference"""
-        test_set_raw = torchvision.datasets.CIFAR10(root=self.data_dir, train=False, download=True, transform=None) # No transform for raw
-        sim_indices = np.load(os.path.join(self.data_dir, "processed", "sim_indices.npy"))
+        """
+        Returns the raw Simulation subset (PIL images) for inference.
+        STRICT: download=False
+        """
+        test_set_raw = torchvision.datasets.CIFAR10(root=self.data_dir, train=False, download=False, transform=None)
+        
+        indices_path = os.path.join(self.data_dir, "processed", "sim_indices.npy")
+        if not os.path.exists(indices_path):
+             raise FileNotFoundError(f"Simulation indices missing: {indices_path}")
+             
+        sim_indices = np.load(indices_path)
         return Subset(test_set_raw, sim_indices)
